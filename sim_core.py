@@ -1,4 +1,4 @@
-"""
+﻿"""
 城市低空安全分类治理的计算实验模型（core simulation）
 
 两个子模型：
@@ -20,6 +20,10 @@ D = np.array([0.35, 0.95, 1.00, 0.60, 0.45, 0.20])   # 需求密度
 C = np.array([0.70, 0.65, 0.75, 0.45, 0.50, 0.30])   # 治理能力（感知+处置）
 MU = np.array([120.0, 400.0, 450.0, 250.0, 200.0, 80.0])  # 日审批容量
 W = D / D.sum()
+
+# 分层保护因子的折减上限（模块级常量，便于敏感性分析；见 journal_ablation.py）
+PROT_HIGH = 0.45   # 高风险任务的最大折减
+PROT_MID = 0.20    # 中风险任务的最大折减
 
 RISK_SHARE = np.array([0.60, 0.30, 0.10])
 RISK_MULT = np.array([1.0, 3.0, 10.0])
@@ -144,8 +148,8 @@ def simulate(regime: Regime, p: Params, c_override=None, mu_override=None, d_ove
                  * (1 + 0.7 * np.maximum(0, load - 0.8)))
         if regime.matched:
             eff = np.clip(c_vec[city] / 0.75, 0, 1.2)
-            prot = np.where(risk == 2, 1 - 0.45 * eff,
-                            np.where(risk == 1, 1 - 0.20 * eff, 1.0))
+            prot = np.where(risk == 2, 1 - PROT_HIGH * eff,
+                            np.where(risk == 1, 1 - PROT_MID * eff, 1.0))
             p_inc = p_inc * prot
         hit = (rng.random(n) < p_inc) & flying & (~interrupted)
         detected = unauth & (rng.random(n) < p.det_base * c_vec[city])
@@ -232,3 +236,5 @@ if __name__ == "__main__":
         print(f"{r['regime']:<12} 事件/万={r['inc_per_10k']:.2f} 完成率={r['completion']:.3f} "
               f"违规={r['unauth_rate']:.3f} 时延={r['mean_delay']:.1f}h "
               f"重复={r['duplicates_per_cross']:.2f} 中断={r['interrupt_rate']:.2f}")
+
+
